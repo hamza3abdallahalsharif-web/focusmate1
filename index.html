@@ -1214,8 +1214,16 @@ async function pollState(){
   if(!!s.locked!==PC.locked){ PC.locked=!!s.locked; applyLock(); }
 }
 setInterval(pollState,3000);
-setInterval(()=>{
-  if(!PC.watch||!PC.sv||!PC.sv.active||!svid.videoWidth) return;
+setInterval(async()=>{
+  if(!PC.watch) return;
+  // ESP32-CAM connected: the parent's live view is the ESP32-CAM photo (a still every few seconds over Bluetooth)
+  if(PC.ok){
+    if(busyD||PC.snapBusy) return;
+    const raw=await espSnap();
+    if(raw){ const d=await bytesURL(raw); if(d){ $('espImg').src=d; $('espFig').hidden=false; api('frame',{d}); } }
+    return;
+  }
+  if(!PC.sv||!PC.sv.active||!svid.videoWidth) return;
   const k=480/svid.videoWidth, c=document.createElement('canvas'); c.width=480; c.height=Math.round(svid.videoHeight*k);
   c.getContext('2d').drawImage(svid,0,0,c.width,c.height);
   api('frame',{d:c.toDataURL('image/jpeg',.45)});
