@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="theme-color" content="#07080b">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FOCUSMATE</title>
+<style>
+:root{--page:#07080b;--ink:#eceef4;--mute:#8b91a3;--on:#0a0b14;--line:color-mix(in srgb,var(--accent) 30%,rgba(255,255,255,.07));--fill:color-mix(in srgb,var(--accent) 12%,rgba(255,255,255,.03));--ok:#2de2a6;--warn:#ffc14d;--bad:#ff5d6c;--accent:#8b9bff;--st:var(--ok);color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;min-height:100%}
+body{background:var(--page);color:var(--ink);
+font-family:"Inter","SF Pro Display","Segoe UI",system-ui,sans-serif;padding:max(16px,env(safe-area-inset-top)) 14px max(24px,env(safe-area-inset-bottom));display:flex;justify-content:center}
+body[data-s=warn]{--st:var(--warn)} body[data-s=bad]{--st:var(--bad)}
+.shell{width:100%;max-width:480px;border-radius:32px;padding:20px 20px 24px;background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 14%,rgba(255,255,255,.05)),rgba(255,255,255,.02));box-shadow:0 0 0 1px var(--line),0 30px 60px -30px #000}
+header{display:flex;align-items:center;justify-content:space-between;padding:0 2px 16px}
+.brand{font-weight:700;font-size:.9rem;letter-spacing:.3em;display:flex;align-items:center;gap:10px}
+.brand svg{width:22px;height:22px}
+.clockbox{display:flex;align-items:center;gap:12px}
+.now{text-align:right;line-height:1.2}
+.now time{display:block;font-size:1.05rem;font-weight:600;font-variant-numeric:tabular-nums}
+.now span{font-size:.72rem;color:var(--mute);font-weight:500;white-space:nowrap}
+.led{width:10px;height:10px;border-radius:50%;background:var(--st);box-shadow:0 0 12px var(--st);transition:.3s}
+
+.oled{display:grid;grid-template-columns:1fr 84px;align-items:center;gap:6px;background:#000;border-radius:24px;padding:18px 18px 18px 22px;box-shadow:inset 0 0 0 1px var(--line)}
+.oled small{display:block;font-size:.68rem;font-weight:600;letter-spacing:.28em;color:var(--mute)}
+.oled b{display:block;font-size:3.5rem;line-height:1.05;font-weight:300;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--st);transition:color .3s;margin:8px 0 4px;text-shadow:0 0 28px color-mix(in srgb,var(--st) 45%,transparent)}
+.oled span{font-size:.95rem;color:#c3c8d6}
+.face{width:84px;height:84px;overflow:visible}
+.face *{transition:opacity .25s}
+.face .fe,.face .fm,.face .fb{opacity:0}
+.face .e-sleep,.face .m-flat{opacity:1}
+body[data-run="1"] .face .e-sleep{opacity:0}
+body[data-run="1"] .face .e-happy,body[data-run="1"] .face .m-smile{opacity:1}
+body[data-run="1"] .face .m-flat{opacity:0}
+body[data-run="1"][data-s=warn] .face .e-happy,body[data-run="1"][data-s=warn] .face .m-smile{opacity:0}
+body[data-run="1"][data-s=warn] .face .e-open,body[data-run="1"][data-s=warn] .face .m-o{opacity:1}
+body[data-run="1"][data-s=bad] .face .e-happy,body[data-run="1"][data-s=bad] .face .m-smile{opacity:0}
+body[data-run="1"][data-s=bad] .face .e-open,body[data-run="1"][data-s=bad] .face .m-flat,body[data-run="1"][data-s=bad] .face .fb{opacity:1}
+body[data-run="1"][data-s=bad] .face{animation:shake .35s linear infinite}
+.face .e-open{transform-box:fill-box;transform-origin:center;animation:blink 4s infinite}
+@keyframes blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+@keyframes shake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+body[data-run="1"] .led{animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--st) 10%,transparent),0 0 20px var(--st)}}
+body[data-run="1"] .cam::after{content:"";position:absolute;left:0;right:0;height:38%;top:-40%;background:linear-gradient(to bottom,transparent,color-mix(in srgb,var(--st) 35%,transparent),transparent);animation:scan 3.2s linear infinite;pointer-events:none}
+@keyframes scan{to{top:105%}}
+
+.chip{margin:14px 0 0;padding:11px 16px;border-radius:999px;box-shadow:inset 0 0 0 1px var(--line);font-weight:600;font-size:.88rem;text-align:center;color:#c9cddb}
+.chip.now{background:var(--accent);color:var(--on);box-shadow:none}
+.eye{margin:16px 0 0;border-radius:26px;box-shadow:0 0 0 1px color-mix(in srgb,var(--st) 75%,transparent),0 0 44px -10px color-mix(in srgb,var(--st) 60%,transparent);transition:box-shadow .3s}
+.cam{position:relative;border-radius:26px;overflow:hidden;background:#000;aspect-ratio:4/3}
+.gal{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.gal figure{margin:0;position:relative}
+.gal img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;display:block;box-shadow:0 0 0 1px var(--line)}
+.gal figcaption{font-size:.7rem;color:var(--mute);margin-top:3px}
+.gal .k{position:absolute;top:5px;left:5px;font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--accent);color:var(--on)}
+.gal .k.phone{background:var(--bad);color:#fff}
+.gal .k.flag{background:var(--warn);color:#0a0b10}
+.fr{display:grid;grid-template-columns:48px 1fr 72px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:.88rem;font-weight:500}
+.fr b{font-variant-numeric:tabular-nums;color:var(--accent)}
+.fr img{width:72px;aspect-ratio:4/3;object-fit:cover;border-radius:8px}
+#tRep h3{margin:4px 0;font-size:1rem}
+#tGo{background:var(--accent);color:var(--on)}
+#cam{transform:scaleX(-1)}
+.cam video,.cam canvas{width:100%;height:100%;object-fit:cover;display:block}
+.cam canvas{position:absolute;inset:0;pointer-events:none}
+.msg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:var(--mute);font-size:.95rem;line-height:1.45}
+.flash{position:fixed;inset:0;background:var(--bad);opacity:0;pointer-events:none}
+body[data-s=bad] .flash{animation:fl 1s ease-in-out infinite}
+@keyframes fl{50%{opacity:.18}}
+#bg{position:fixed;inset:0;z-index:-1;--scrim:.2}
+#bg[data-k=photo]{--scrim:.62}
+#bg::after{content:"";position:absolute;inset:0;background:radial-gradient(640px 400px at 50% -6%,color-mix(in srgb,var(--st) 24%,transparent),transparent 70%),rgba(7,8,11,var(--scrim))}
+.lblt{display:block;font-size:.84rem;font-weight:500;color:var(--mute);margin-bottom:10px}
+.bgrow{display:flex;flex-wrap:wrap;gap:12px}
+.sw{width:46px;height:46px;padding:0;flex:none;border-radius:50%;box-shadow:inset 0 0 0 1px var(--line)}
+.sw[aria-pressed=true]{box-shadow:0 0 0 2px #0d0e12,0 0 0 4px var(--accent)}
+.sw.up{background:var(--fill);color:var(--ink);font-size:1.3rem;font-weight:300}
+.chk{display:flex;align-items:center;gap:10px;color:var(--ink)}
+.chk input{width:20px;height:20px;accent-color:var(--accent)}
+button{position:relative;overflow:hidden}
+.rip{position:absolute;border-radius:50%;pointer-events:none;background:currentColor;opacity:.3;transform:scale(0);animation:rip .6s ease-out forwards}
+@keyframes rip{to{transform:scale(1);opacity:0}}
+.shell.pulse{animation:sp .6s ease-out}
+@keyframes sp{from{box-shadow:0 0 0 1px var(--line),0 30px 60px -30px #000,0 0 0 0 color-mix(in srgb,var(--st) 60%,transparent)}to{box-shadow:0 0 0 1px var(--line),0 30px 60px -30px #000,0 0 0 22px transparent}}
+@media (prefers-reduced-motion:reduce){.rip,.shell.pulse{animation:none}}
+.alarm{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:20px;background:rgba(7,8,11,.84);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.alarm[hidden]{display:none}
+.acard{width:100%;max-width:380px;text-align:center;padding:28px 22px;border-radius:32px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03));box-shadow:0 0 0 1px var(--line),0 0 80px -10px color-mix(in srgb,var(--bad) 60%,transparent);animation:ringp 1s ease-in-out infinite}
+@keyframes ringp{50%{transform:scale(1.015)}}
+.acard small{letter-spacing:.3em;font-size:.7rem;font-weight:700;color:var(--bad)}
+.acard h2{margin:8px 0 2px;font-size:1.6rem;font-weight:600}
+.acard p{margin:0 0 18px;color:#c3c8d6}
+.ring{position:relative;width:170px;height:170px;margin:0 auto 22px;display:grid;place-items:center}
+.ring svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:6}
+.rb{stroke:rgba(255,255,255,.1)}
+.rf{stroke:var(--ok);stroke-linecap:round;stroke-dasharray:327;stroke-dashoffset:327;transition:stroke-dashoffset .4s linear}
+.ring span{font-weight:600;font-size:.95rem;max-width:112px;line-height:1.3}
+#alSnooze{width:100%;background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+#alStop{width:100%;margin-top:10px;background:var(--accent);color:var(--on)}
+@media (prefers-reduced-motion:reduce){.acard{animation:none}}
+.dd{position:relative}
+.ddb{width:100%;text-align:left;border-radius:14px;padding:13px 42px 13px 14px;background:var(--fill);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);font-weight:500;font-size:1rem}
+.ddb::after{content:"";position:absolute;right:17px;top:50%;width:8px;height:8px;border-right:2px solid var(--mute);border-bottom:2px solid var(--mute);transform:translateY(-70%) rotate(45deg);transition:transform .2s}
+.ddb[aria-expanded=true]::after{transform:translateY(-30%) rotate(225deg)}
+.ddl{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:15;margin:0;padding:6px;list-style:none;max-height:240px;overflow:auto;border-radius:18px;background:color-mix(in srgb,var(--accent) 12%,#0c0e13);box-shadow:0 0 0 1px var(--line),0 18px 40px -10px #000}
+.ddl li{padding:11px 12px;border-radius:12px;font-weight:500;font-size:.95rem;color:var(--ink);cursor:pointer}
+.ddl li:hover{background:var(--fill)}
+.ddl li[aria-selected=true]{background:var(--accent);color:var(--on);font-weight:700}
+#conf{position:fixed;inset:0;pointer-events:none;z-index:9}
+@media (prefers-reduced-motion:reduce){body[data-s=bad] .flash{animation:none;opacity:.1}.face,.face *,.led,.cam::after{animation:none!important}}
+
+.row{display:flex;gap:10px;margin-top:18px}
+button{border:0;border-radius:999px;padding:16px 20px;font:inherit;font-weight:700;font-size:.98rem;cursor:pointer;transition:transform .12s,opacity .2s}
+button:active{transform:scale(.97)}
+#go{flex:2;background:var(--accent);color:var(--on)}
+#test{flex:1;background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+.prog{margin-top:20px}
+.barwrap{height:6px;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden}
+.barwrap i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--st));border-radius:99px;transition:width .6s}
+.prog small{display:block;margin-top:8px;color:var(--mute);font-weight:500;font-size:.8rem}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.tiles div{border-radius:18px;padding:14px 8px;text-align:center;background:var(--fill);box-shadow:inset 0 0 0 1px var(--line)}
+.tiles b{display:block;font-size:1.4rem;font-weight:600;font-variant-numeric:tabular-nums}
+.tiles span{font-size:.72rem;color:var(--mute);font-weight:500;letter-spacing:.04em}
+
+details{margin-top:18px;border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font-weight:600;font-size:.92rem;padding:8px 2px;list-style:none;display:flex;justify-content:space-between;align-items:center}
+summary::after{content:"+";color:var(--mute);font-size:1.3rem;line-height:1;font-weight:300}
+details[open] summary::after{content:"\2212"}
+.set{display:grid;gap:14px;padding:6px 2px 4px}
+label{display:grid;gap:7px;font-size:.84rem;font-weight:500;color:var(--mute)}
+input[type=text],select{width:100%;padding:13px 14px;border-radius:14px;border:0;box-shadow:inset 0 0 0 1px var(--line);background:var(--fill);color:var(--ink);font:inherit;font-weight:500}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.days{display:flex;gap:6px}
+.days button{flex:1;padding:11px 0;border-radius:12px;background:transparent;box-shadow:inset 0 0 0 1px var(--line);color:var(--mute);font-weight:600;font-size:.78rem}
+.days button[aria-pressed=true]{background:var(--accent);color:var(--on);box-shadow:none}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input[type=time],input[type=number]{width:100%;padding:12px 14px;border-radius:14px;border:0;box-shadow:inset 0 0 0 1px var(--line);background:var(--fill);color:var(--ink);font:inherit;font-weight:500;min-height:46px}
+#addF{background:var(--accent);color:var(--on)}
+.addrow{display:flex;gap:8px}
+.addrow input{flex:1;min-width:0}
+#addS{padding:12px 20px;background:var(--accent);color:var(--on)}
+.sr{display:grid;grid-template-columns:128px 1fr 34px;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:.92rem;font-weight:500}
+.sr b{display:block;font-weight:600}
+.sr small{color:var(--mute);font-size:.8rem}
+.sr .x{padding:0;width:32px;height:32px;background:transparent;box-shadow:inset 0 0 0 1px var(--line);color:var(--mute);font-size:.85rem}
+.hr{display:grid;grid-template-columns:92px 1fr 74px;gap:10px;align-items:center;font-size:.82rem;font-weight:500;padding:6px 0}
+.hr i{height:6px;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden}
+.hr u{display:block;height:100%;background:var(--ok);border-radius:99px}
+.hr em{font-style:normal;text-align:right;color:var(--mute)}
+.empty,.note{color:var(--mute);font-size:.83rem;margin:4px 0;line-height:1.45}
+.err{color:var(--bad);font-weight:600;font-size:.83rem;min-height:1.1em;margin:0}
+.link{background:none;padding:6px 0;color:var(--accent);font-size:.85rem;font-weight:600;text-align:left}
+.hint{display:none;margin-top:16px;padding:12px 14px;border-radius:16px;background:var(--warn);color:#0a0b10;font-weight:700;text-align:center;font-size:.92rem}
+.stat{font-size:.82rem;color:var(--mute);margin-top:14px;text-align:center;min-height:1.2em}
+.tag{text-align:center;font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:#5f6475;margin-top:12px}
+.ovl{z-index:40}.ovl.lk{z-index:35}
+.ovl .acard{animation:none;text-align:left;max-height:92vh;overflow:auto}
+.ovl .acard h2{font-size:1.35rem}
+.ovl .set{padding:10px 0 0}
+.ovl button:disabled{opacity:.4}
+#espFig{margin:10px 0 0}#espFig img{width:100%;border-radius:14px;display:block;box-shadow:0 0 0 1px var(--line)}
+#pcStat{margin:10px 0 0;text-align:center}
+</style>
+<script src="config.js"></script>
+</head>
+<body data-s="ok" data-run="0">
+<canvas id="conf"></canvas>
+<div id="bg"></div>
+<div class="alarm" id="alarm" role="alertdialog" aria-modal="true" aria-labelledby="alT" hidden>
+  <div class="acard">
+    <small>ALARM</small>
+    <h2 id="alT">Time to study</h2>
+    <p id="alS"></p>
+    <div class="ring" id="alRingBox">
+      <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="rb" cx="60" cy="60" r="52"/><circle class="rf" id="alRing" cx="60" cy="60" r="52"/></svg>
+      <span id="alMsg">Look at the camera to stop the alarm</span>
+    </div>
+    <div id="alUp" hidden>
+      <button id="alUpBtn">Upload a photo of your desk</button>
+      <input type="file" id="alFile" accept="image/*" multiple hidden>
+      <p class="note" id="alUpNote">Upload at least one photo to stop the alarm.</p>
+    </div>
+    <button id="alSnooze">Snooze 5 min</button>
+    <button id="alStop" hidden>Stop alarm</button>
+  </div>
+</div>
+<div class="alarm ovl" id="gate" role="dialog" aria-modal="true" hidden>
+  <div class="acard">
+    <small style="color:var(--accent)">REQUIRED SETUP</small>
+    <h2>Parent control and ESP32-CAM</h2>
+    <div class="set">
+      <label>Student name<input type="text" id="pcName" autocomplete="off"></label>
+      <label>Parent email<input type="text" id="pcMail" inputmode="email" autocomplete="off"></label>
+      <label>Parent PIN (at least 4 characters, used to open the parent page)<input type="text" id="pcPin" autocomplete="off"></label>
+      <label class="chk"><input type="checkbox" id="pcOk"> I understand my parent can see my screen, my camera photos and everything that happens in a session.</label>
+      <button id="pcSave">Save parent settings</button>
+      <p class="note" id="pcState"></p>
+      <button id="espBtn">Connect ESP32-CAM (Bluetooth)</button>
+      <p class="note">The ESP32-CAM is required. FOCUSMATE will not start without it.</p>
+      <p class="err" id="gErr"></p>
+      <button class="link" id="gClose" hidden>Close</button>
+    </div>
+  </div>
+</div>
+<div class="alarm ovl lk" id="lockov" role="alertdialog" aria-modal="true" hidden>
+  <div class="acard">
+    <small>LOCKED BY PARENT</small>
+    <h2>Study mode</h2>
+    <p>Your screen is locked to FOCUSMATE. Share your whole screen so your parent can view it.</p>
+    <button id="lkGo" style="width:100%;background:var(--accent);color:var(--on)">Open FOCUSMATE</button>
+    <p class="err" id="lkErr"></p>
+  </div>
+</div>
+<div class="flash"></div>
+<main class="shell">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="10" fill="none" stroke="var(--st)" stroke-width="2.2"/><circle cx="13" cy="13" r="4" fill="var(--st)"/></svg>
+      FOCUSMATE
+    </div>
+    <div class="clockbox">
+      <div class="now"><time id="clk">--:--</time><span id="dte"></span></div>
+      <div class="led" aria-hidden="true"></div>
+    </div>
+  </header>
+
+  <section class="oled" aria-live="polite">
+    <div>
+      <small>FOCUS MODE</small>
+      <b id="t">00:00</b>
+      <span id="lbl">Ready</span>
+    </div>
+    <svg class="face" viewBox="0 0 84 84" fill="none" stroke="var(--st)" stroke-width="4" stroke-linecap="round" aria-hidden="true">
+      <g class="fe e-open" fill="var(--st)" stroke="none"><ellipse cx="25" cy="34" rx="7" ry="10"/><ellipse cx="59" cy="34" rx="7" ry="10"/></g>
+      <g class="fe e-happy"><path d="M16 38q9-16 18 0M50 38q9-16 18 0"/></g>
+      <g class="fe e-sleep"><path d="M17 36h16M51 36h16"/></g>
+      <g class="fb"><path d="M14 14l22 8M70 14L48 22"/></g>
+      <path class="fm m-smile" d="M26 58q16 16 32 0"/>
+      <ellipse class="fm m-o" cx="42" cy="62" rx="6" ry="8"/>
+      <path class="fm m-flat" d="M30 64h24"/>
+    </svg>
+  </section>
+  <div class="chip" id="next" aria-live="polite">Nothing planned yet.</div>
+
+  <div class="eye">
+    <div class="cam">
+      <video id="cam" autoplay muted playsinline aria-label="Live camera feed"></video>
+      <canvas id="ov"></canvas>
+      <div class="msg" id="msg">Tap Start and allow camera access.</div>
+    </div>
+  </div>
+
+  <figure id="espFig" hidden><img id="espImg" alt="Last ESP32-CAM photo"><figcaption class="note">Last ESP32-CAM photo</figcaption></figure>
+  <p class="note" id="pcStat"></p>
+  <div class="row">
+    <button id="go">Start session</button>
+    <button id="test">Test alert</button>
+  </div>
+
+  <section class="prog" aria-label="Session progress">
+    <div class="barwrap"><i id="bar"></i></div>
+    <small id="barl">Goal: 25 min of focus</small>
+  </section>
+  <section class="tiles">
+    <div><b id="sPct">&ndash;</b><span>Focus rate</span></div>
+    <div><b id="sDis">0</b><span>Distractions</span></div>
+    <div><b id="sBest">00:00</b><span>Best streak</span></div>
+  </section>
+
+  <div class="hint" id="hint">Tap anywhere once so your phone is allowed to speak.</div>
+
+  <details id="sd" open>
+    <summary>Study schedule</summary>
+    <div class="set">
+      <div>
+        <span class="lblt">Days</span>
+        <div class="days" id="days" role="group" aria-label="Days of the week"></div>
+      </div>
+      <div class="two">
+        <label>Start time
+          <input type="time" id="sTime" value="18:00">
+        </label>
+        <label>Length
+          <select id="sLen">
+            <option value="0">No end time</option>
+            <option value="30">30 minutes</option>
+            <option value="45">45 minutes</option>
+            <option value="60" selected>1 hour</option>
+            <option value="90">1.5 hours</option>
+            <option value="120">2 hours</option>
+            <option value="custom">Custom…</option>
+          </select>
+        </label>
+      </div>
+      <label id="lenC" hidden>Custom length in minutes
+        <input type="number" id="sLenC" min="1" max="720" inputmode="numeric" placeholder="For example 75">
+      </label>
+      <label>Subject
+        <input type="text" id="sSub" placeholder="Arabic and math" autocomplete="off">
+      </label>
+      <button id="addF">Add to schedule</button>
+      <label>Or type it quickly
+        <div class="addrow">
+          <input type="text" id="sIn" placeholder="Sunday 6:00pm Arabic and math" autocomplete="off">
+          <button id="addS">Add</button>
+        </div>
+      </label>
+      <p class="err" id="sErr"></p>
+      <div id="slist"></div>
+      <button class="link" id="alTest">Test the alarm</button>
+      <p class="note">Keep this page open. At the planned time FOCUSMATE speaks to you and starts the session. Use a day name or "daily".</p>
+    </div>
+  </details>
+
+  <details id="td">
+    <summary>Test mode</summary>
+    <div class="set">
+      <p class="note">For practice tests. It quietly watches for signs of cheating and shows a report at the end. No sounds, and nothing leaves this device.</p>
+      <label>Test length in minutes
+        <input type="number" id="tLen" value="30" min="1" max="300" inputmode="numeric">
+      </label>
+      <button id="tGo">Start test</button>
+      <p class="err" id="tMsg"></p>
+      <div id="tRep" hidden></div>
+    </div>
+  </details>
+
+  <details id="set" open>
+    <summary>Settings</summary>
+    <div class="set">
+      <label class="chk"><input type="checkbox" id="chat" checked> Encouragement while I focus</label>
+      <label class="chk"><input type="checkbox" id="snapOn" checked> Take a picture every minute during sessions</label>
+      <label class="chk"><input type="checkbox" id="phoneOn" checked> Sound the alarm if a phone is seen</label>
+      <label>Phone detection sensitivity
+        <select id="phSens">
+          <option value=".5">Low (fewer false alarms)</option>
+          <option value=".35">Medium</option>
+          <option value=".25">High (catches more)</option>
+        </select>
+      </label>
+      <button class="link" id="phTest">Test the phone alarm</button>
+      <label>Remind me after <span id="sv">5</span> seconds away
+        <input type="range" id="sec" min="2" max="30" value="5">
+      </label>
+      <label>Focus goal: <span id="gv">25</span> minutes
+        <input type="range" id="goal" min="5" max="90" step="5" value="25">
+      </label>
+      <label>Voice
+        <select id="voice"></select>
+      </label>
+      <label>Reminder message
+        <input type="text" id="say" value="Hey! Come back to your work.">
+      </label>
+      <div>
+        <span class="lblt">Background</span>
+        <div class="bgrow" id="bgrow" role="group" aria-label="Background"></div>
+        <input type="file" id="bgf" accept="image/*" hidden>
+        <p class="err" id="bgErr"></p>
+      </div>
+      <label class="chk"><input type="checkbox" id="fx" checked> Button sounds and haptics</label>
+      <label class="chk"><input type="checkbox" id="lookReq" checked> Must look at the camera to stop alarms</label>
+      <button class="link" id="pcOpen">Parent control and ESP32-CAM (parent PIN needed)</button>
+    </div>
+  </details>
+  <details id="hd">
+    <summary>Recent sessions</summary>
+    <div id="hist"></div>
+    <p class="note">Bar is your focus rate. The number with × is how many times you were reminded.</p>
+    <button class="link" id="clr">Clear history</button>
+  </details>
+  <details id="gd">
+    <summary>Snapshots</summary>
+    <div class="gal" id="gal"></div>
+    <p class="note">A picture is saved every minute while a session runs. They stay on this device only.</p>
+    <button class="link" id="galClr">Clear snapshots</button>
+  </details>
+  <div class="stat" id="stat"></div>
+  <div class="tag">Focus is a skill. We help you practice it.</div>
+</main>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+const store = { get:k=>{try{return localStorage.getItem(k)}catch(e){return null}}, set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}} };
+$('sec').value = store.get('fm_sec') || 5; $('sv').textContent = $('sec').value;
+$('say').value = store.get('fm_say') || $('say').value;
+$('sec').oninput = e => { $('sv').textContent = e.target.value; store.set('fm_sec', e.target.value); };
+$('say').onchange = e => store.set('fm_say', e.target.value);
+
+let running=false, detector=null, native=null, canDetect=false, wake=null, unlocked=false;
+let focused=0, lastSeen=0, lastAlert=0, loopId=null, tickId=null, retryId=null, state='ok';
+let everLoaded=false, corsTried=false, lastSum=-1, same=0;
+const img=$('cam'), ov=$('ov'), ctx=ov.getContext('2d'), work=document.createElement('canvas');
+work.width=320; work.height=240;
+const wctx=work.getContext('2d',{willReadFrequently:true});
+
+function setState(s,label){ state=s; document.body.dataset.s=s; if(label) $('lbl').textContent=label; }
+const fmt = s => String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+
+// ---- the phone replaces the buzzer ----
+const DEFAULT_MSG='Hey! Come back to your work.';
+const NUDGES=['Hey! Come back to your work.','Hey, where did you go? Your session is still running.','Hey, time to get back to it.','Come on, you were doing great. Let\'s get back to it.','Your desk is waiting for you.','Break is over. Back to it.','You have got this. Come back and keep going.','The timer is paused until you are back.'];
+const SLEEP=['Hey, are you falling asleep? Eyes up.','Eyes open please. You can do this.','Looks like you are getting sleepy. Take a breath and sit up.','Wake up, champion. Back to work.'];
+const PHONEL=['Put the phone down and get back to work.','Phone away please. Your focus matters more.','That phone can wait. Eyes on your work.','Phone down. You are doing so well, do not lose it now.'];
+const PHONEAL=['Phone detected. Put it down and upload a photo of your desk.','Phone alarm. Upload a photo of your desk to stop it.'];
+const GOAL=['Goal reached. Great work! Take a break.','You hit your goal. Stand up, stretch and drink some water.','Goal complete. That was real focus. Take a break.'];
+const DONE=['Session finished. Nice work!','And that is a wrap. Well done.','Time is up. You showed up and it shows.'];
+const STARTS=['Session started. Let us focus.','Okay, timer is on. You have got this.','Here we go. One focused block.'];
+const UPL=['Good, you\'re up. Let\'s start studying.','Verified. Rise and shine, let us study.','You are awake. Time to work.'];
+const PROOF=['Thanks. Back to work.','Got it. Now keep that phone away.','Photo saved. Back to it.'];
+const CHEER=['Keep going.','You are on fire.','Great focus.','That is solid.'];
+const WELCOME=['Welcome back.','Nice, you\'re back.','There you are. Let\'s keep going.','Good to see you. The timer is running again.','Back at it. Nice.','And we are back.'];
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+let voices=[];
+const GOOD=/natural|neural|premium|enhanced|online|google|siri|samantha|ava|allison|aria|jenny|zira|karen|serena/i;
+function loadVoices(){
+  try{ voices=speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang)); }catch(e){ voices=[]; }
+  voices.sort((a,b)=>(GOOD.test(b.name)-GOOD.test(a.name))||(b.localService-a.localService)||a.name.localeCompare(b.name));
+  const sel=$('voice'), saved=store.get('fm_voice');
+  sel.innerHTML='<option value="">Best available</option>'+voices.map(v=>`<option value="${v.name}">${v.name}</option>`).join('');
+  if(saved && voices.some(v=>v.name===saved)) sel.value=saved;
+  if(sel._dd) sel._dd();
+}
+loadVoices();
+try{ speechSynthesis.onvoiceschanged=loadVoices; }catch(e){}
+$('voice').onchange=e=>{ store.set('fm_voice',e.target.value); speak('Hey! Come back to your work.'); };
+function speak(text){
+  try{
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text);
+    const name=$('voice').value;
+    const v=voices.find(x=>x.name===name)||voices[0];
+    if(v){ u.voice=v; u.lang=v.lang; }
+    u.rate=0.95; u.pitch=1; u.volume=1;     // calm and natural, not chirpy
+    speechSynthesis.speak(u);
+  }catch(e){}
+}
+function alertPhone(over){
+  const msg=$('say').value.trim(); const text = over || ((!msg || msg===DEFAULT_MSG) ? pick(NUDGES) : msg);
+  speak(text);
+  try{ navigator.vibrate && navigator.vibrate([300,150,300,150,500]); }catch(e){}
+  try{ if('Notification' in window && Notification.permission==='granted') new Notification('FOCUSMATE',{body:text}); }catch(e){}
+  if(!unlocked) $('hint').style.display='block';
+}
+$('test').onclick = () => alertPhone();
+
+// Browsers only let a page talk after one touch. Any tap anywhere unlocks it for good.
+async function unlock(){
+  if(unlocked) return; unlocked=true; $('hint').style.display='none';
+  try{ speechSynthesis.speak(new SpeechSynthesisUtterance('')); }catch(e){}
+  try{ if('Notification' in window && Notification.permission==='default') Notification.requestPermission(); }catch(e){}
+  keepAwake();
+}
+async function keepAwake(){ try{ if(running && !wake) { wake=await navigator.wakeLock?.request('screen'); wake?.addEventListener('release',()=>{wake=null}); } }catch(e){} }
+['pointerdown','touchstart','keydown'].forEach(ev=>addEventListener(ev,unlock,{passive:true}));
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) keepAwake(); });
+
+// ---- face detection (MediaPipe, falls back to the browser's FaceDetector) ----
+let lmk=null;
+const look={closed:0,since:0,faces:0,yaw:0};
+async function loadDetector(){
+  try{
+    const base='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+    const m = await import(base+'/vision_bundle.mjs');
+    const fs = await m.FilesetResolver.forVisionTasks(base+'/wasm');
+    try{
+      lmk = await m.FaceLandmarker.createFromOptions(fs,{
+        baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'},
+        runningMode:'IMAGE', numFaces:2, outputFaceBlendshapes:true});
+      return true;
+    }catch(_){}
+    detector = await m.FaceDetector.createFromOptions(fs,{
+      baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite'},
+      runningMode:'IMAGE', minDetectionConfidence:0.5});
+    return true;
+  }catch(e){
+    if('FaceDetector' in window){ native=new FaceDetector({fastMode:true}); return true; }
+    return false;
+  }
+}
+async function faces(){
+  wctx.drawImage(img,0,0,320,240);
+  if(lmk){
+    const r=lmk.detect(work);
+    look.faces=r.faceLandmarks.length;
+    if(!look.faces){ look.closed=0; look.yaw=0; return []; }
+    const P=r.faceLandmarks[0]; look.yaw=(P[1].x-P[234].x)/((P[454].x-P[234].x)||1)-.5;   // 0 = facing the screen
+    const bs=r.faceBlendshapes?.[0]?.categories||[], g=n=>bs.find(c=>c.categoryName===n)?.score||0;
+    look.closed=(g('eyeBlinkLeft')+g('eyeBlinkRight'))/2;      // 0 = eyes open, 1 = fully shut
+    let x0=1,y0=1,x1=0,y1=0;
+    for(const p of r.faceLandmarks[0]){ if(p.x<x0)x0=p.x; if(p.x>x1)x1=p.x; if(p.y<y0)y0=p.y; if(p.y>y1)y1=p.y; }
+    return [{originX:x0*320,originY:y0*240,width:(x1-x0)*320,height:(y1-y0)*240}];
+  }
+  look.closed=0; look.yaw=0;
+  let out;
+  if(detector) out=detector.detect(work).detections.map(d=>d.boundingBox);
+  else { const r=await native.detect(work); out=r.map(f=>({originX:f.boundingBox.x,originY:f.boundingBox.y,width:f.boundingBox.width,height:f.boundingBox.height})); }
+  look.faces=out.length; return out;
+}
+function draw(boxes){
+  ov.width=320; ov.height=240; ctx.clearRect(0,0,320,240);
+  ctx.lineWidth=3; ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--st');
+  ctx.lineCap='round'; ctx.lineWidth=4; ctx.font='bold 13px sans-serif'; ctx.fillStyle=ctx.strokeStyle;
+  boxes.forEach(b=>{
+    const w=b.width,h=b.height,x=320-b.originX-w,y=b.originY,l=Math.min(w,h)*0.28;   // video is mirrored
+    ctx.beginPath();
+    [[x,y,1,1],[x+w,y,-1,1],[x,y+h,1,-1],[x+w,y+h,-1,-1]].forEach(([cx,cy,dx,dy])=>{ ctx.moveTo(cx+dx*l,cy); ctx.lineTo(cx,cy); ctx.lineTo(cx,cy+dy*l); });
+    ctx.stroke(); ctx.fillText('LOCKED',x,Math.max(14,y-6));
+  });
+  if(Date.now()-phoneDbg.t<1500){            // what the phone detector currently sees
+    ctx.setLineDash([6,4]); ctx.lineWidth=2.5; ctx.strokeStyle=ctx.fillStyle='#ffc14d';
+    phoneDbg.list.forEach(({b,s})=>{ const w=b.width/2, h=b.height/2, x=320-b.originX/2-w, y=b.originY/2; ctx.strokeRect(x,y,w,h); ctx.fillText(`phone ${Math.round(s*100)}%`,x,Math.max(14,y-5)); });
+    ctx.setLineDash([]);
+  }
+}
+
+async function check(){
+  if(!running) return;
+  let n=0;
+  if(canDetect && everLoaded){
+    try{ const b=await faces(); n=b.length; draw(b); }
+    catch(e){ canDetect=false; $('stat').textContent='Face detection stopped working. Live view only.'; }
+  }
+  if(canDetect && everLoaded) watchPhone(Date.now());
+  const now=Date.now();
+  if(alarm.on && alarm.mode==='look') alarmCheck(n,now);
+  if(T.on) testCheck(n,now);
+  // eyes shut for 1.5 s counts as asleep; a phone in view counts as distracted
+  if(n>0 && look.closed>0.6){ look.since = look.since || now; } else look.since=0;
+  const asleep = look.since && now-look.since>=1500, phone = phoneSeen(now);
+  const attentive = n>0 && !asleep && !phone;
+  if(attentive){
+    lastSeen=now;
+    if(state==='bad'){ speak(pick(WELCOME)); }           // automatic welcome back
+    if(state!=='ok') setState('ok','Focused');
+    else if($('lbl').textContent==='Waiting for you') setState('ok','Focused');
+  } else if(n>0){
+    const why = phone ? 'Put the phone down' : 'Eyes closed';
+    if(state==='ok') setState('warn',why); else if(state==='warn') $('lbl').textContent=why;
+  }
+  if(canDetect && everLoaded && !alarm.on && !T.on){
+    const gone=(now-lastSeen)/1000, limit=+$('sec').value;
+    if(gone>=limit){
+      if(state!=='bad'){ dist++; streak=0; onDistraction(n>0?(phone?'phone':'asleep'):'away'); }
+      setState('bad', n>0 ? (phone ? 'Phone down!' : 'Wake up!') : 'Come back!');
+      if(now-lastAlert>12000){ lastAlert=now; alertPhone(n>0 ? pick(phone ? PHONEL : SLEEP) : null); }   // repeats by itself
+    } else if(gone>=2 && n===0){ setState('warn','Where did you go?'); }
+  }
+  loopId=setTimeout(check,500);
+}
+
+// ---- laptop camera ----
+let stream=null, snapId=null;
+async function connect(force){
+  clearTimeout(retryId);
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  $('msg').textContent = force ? 'Reconnecting\u2026' : 'Starting camera\u2026'; $('msg').style.display='grid';
+  if(!navigator.mediaDevices?.getUserMedia){ $('msg').textContent='This browser cannot use the camera here. Open the page in Chrome or Edge.'; return false; }
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
+    img.srcObject=stream; await img.play(); everLoaded=true; $('msg').style.display='none';
+    stream.getVideoTracks()[0].onended=()=>{ if(running){ everLoaded=false; retryId=setTimeout(()=>connect(true),3000); } };
+    return true;
+  }catch(e){
+    $('msg').textContent = e && e.name==='NotAllowedError' ? 'Camera blocked. Allow camera access for this page, then tap Start.' : 'No camera found, or another app is using it.';
+    return false;
+  }
+}
+
+function confetti(){
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  const c=$('conf'), g=c.getContext('2d'); c.width=innerWidth; c.height=innerHeight;
+  const cols=['#2de2a6','#8b9bff','#ffc14d','#ffffff','#ff5d6c'];
+  const ps=Array.from({length:110},()=>({x:innerWidth/2,y:innerHeight*.55,vx:(Math.random()-.5)*14,vy:-Math.random()*16-4,r:Math.random()*6+3,c:cols[Math.floor(Math.random()*cols.length)],a:Math.random()*6}));
+  let f=0;
+  (function step(){
+    g.clearRect(0,0,c.width,c.height);
+    ps.forEach(p=>{ p.vy+=.45; p.x+=p.vx; p.y+=p.vy; p.a+=.2; g.save(); g.translate(p.x,p.y); g.rotate(p.a); g.fillStyle=p.c; g.fillRect(-p.r,-p.r/2,p.r*2,p.r); g.restore(); });
+    if(++f<130) requestAnimationFrame(step); else g.clearRect(0,0,c.width,c.height);
+  })();
+}
+// ---- stats, goal and history ----
+let elapsed=0, dist=0, streak=0, best=0, goalHit=false;
+$('goal').value = store.get('fm_goal') || 25;
+const goalMin = () => +$('goal').value;
+function stats(){
+  $('sPct').textContent = elapsed ? Math.round(focused/elapsed*100)+'%' : '\u2013';
+  $('sDis').textContent = dist; $('sBest').textContent = fmt(best);
+  $('bar').style.width = Math.min(100, focused/(goalMin()*60)*100)+'%';
+  $('barl').textContent = `Goal: ${goalMin()} min of focus`; $('gv').textContent = goalMin();
+}
+$('goal').oninput = () => { store.set('fm_goal',$('goal').value); stats(); };
+function tick(){
+  if(!running) return;
+  elapsed++;
+  if(state==='ok' && $('lbl').textContent==='Focused'){ focused++; streak++; best=Math.max(best,streak); $('t').textContent=fmt(focused);
+    if(focused%600===0 && $('chat').checked && !T.on && !alarm.on) speak(`${focused/60} minutes of focus. ${pick(CHEER)}`); }
+  else streak=0;
+  if(!goalHit && !T.on && focused>=goalMin()*60){
+    goalHit=true; confetti(); speak(pick(GOAL)); report('goal',`Focus goal of ${goalMin()} minutes reached.`);
+    try{ navigator.vibrate && navigator.vibrate([200,100,200,100,200]); }catch(e){}
+    $('stat').textContent='Goal reached! Take a break, or keep going.';
+  }
+  stats();
+}
+const loadHist = () => { try{ return JSON.parse(store.get('fm_hist')||'[]'); }catch(e){ return []; } };
+function renderHist(){
+  const h=loadHist();
+  $('hist').innerHTML = h.length ? h.map(x=>{
+    const p = x.e ? Math.round(x.f/x.e*100) : 0, d = new Date(x.t);
+    return `<div class="hr"><span>${d.toLocaleDateString(undefined,{weekday:'short'})} ${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span><i><u style="width:${p}%"></u></i><em>${Math.round(x.f/60)}m, ${x.x}\u00d7</em></div>`;
+  }).join('') : '<p class="empty">Finish a session and it shows up here.</p>';
+}
+$('clr').onclick = () => { store.set('fm_hist','[]'); renderHist(); };
+renderHist(); stats();
+
+// ---- start / stop ----
+async function start(){
+  if(!gateOK()){ openGate(false); return; }
+  canDetect=true; everLoaded=false;
+  if(!(await connect())) return;
+  store.set('fm_auto','1');
+  report('session','Session started'+(curSubj?': '+curSubj:'')+'.');
+  $('go').textContent='Pause'; running=true; document.body.dataset.run='1'; focused=0; elapsed=0; dist=0; streak=0; best=0; goalHit=false; $('t').textContent='00:00'; stats(); lastSeen=Date.now(); lastAlert=0; same=0;
+  setState('ok','Waiting for you'); $('stat').textContent='Loading face detection…';
+  if($('chat').checked && !alarm.on && !T.on) speak(pick(STARTS));
+  if(!unlocked) $('hint').style.display='block';
+  keepAwake();
+  const ok = (lmk||detector||native) ? true : await loadDetector();
+  if(!ok){ canDetect=false; $('stat').textContent='Face detection unavailable offline. Live view only.'; }
+  else if(canDetect) $('stat').textContent = lmk ? 'Watching your face, eyes and phone.' : 'Face detection on. Eye detection unavailable.';
+  lastSeen=Date.now();
+  loadObj();
+  check();
+  tickId=setInterval(tick,1000);
+  clearInterval(snapId); snapId=setInterval(()=>{ if(running && $('snapOn').checked) takeShot('auto'); },60000);
+  setTimeout(()=>{ if(running && $('snapOn').checked) takeShot('auto'); },3000);
+}
+function stop(){
+  if(T.on) endTest();
+  if(running && elapsed>=10){ const h=loadHist(); h.unshift({t:Date.now(),f:focused,e:elapsed,x:dist}); store.set('fm_hist',JSON.stringify(h.slice(0,8))); renderHist(); }
+  if(running) report('session',`Session ended: ${fmt(focused)} focused, ${dist} distraction${dist===1?'':'s'}, ${Math.round(focused/Math.max(1,elapsed)*100)}% focus rate.`);
+  running=false; curSubj=''; endAt=0; renderNext(); document.body.dataset.run='0'; clearTimeout(loopId); clearTimeout(retryId); clearInterval(tickId); ctx.clearRect(0,0,ov.width,ov.height);
+  clearInterval(snapId);
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; img.srcObject=null; everLoaded=false; $('msg').textContent='Camera off. Tap Start to turn it on.'; $('msg').style.display='grid'; }
+  try{ wake&&wake.release(); }catch(e){}
+  try{ speechSynthesis.cancel(); }catch(e){}
+  $('go').textContent='Start session'; setState('ok','Paused: '+fmt(focused)+' focused');
+}
+$('go').onclick = () => running ? (store.set('fm_auto','0'), stop()) : start();
+
+// ---- backgrounds ----
+const BGS={
+  aurora:['Aurora','radial-gradient(500px 400px at 15% 10%,rgba(139,155,255,.4),transparent 70%),radial-gradient(500px 450px at 90% 40%,rgba(45,226,166,.25),transparent 70%),radial-gradient(600px 500px at 30% 100%,rgba(255,93,108,.2),transparent 70%),#07080b'],
+  midnight:['Midnight','#07080b'],
+  sunset:['Sunset','linear-gradient(160deg,#2b1055,#7a2a6e 45%,#d6546a 85%,#ff9a62)'],
+  ocean:['Ocean','linear-gradient(160deg,#021b2e,#0b4a6f 55%,#0a8f9c)'],
+  forest:['Forest','linear-gradient(160deg,#04140d,#0d3b2a 60%,#2f7d4f)'],
+  grid:['Grid','linear-gradient(rgba(255,255,255,.07) 1px,transparent 1px) 0 0/32px 32px,linear-gradient(90deg,rgba(255,255,255,.07) 1px,transparent 1px) 0 0/32px 32px,#07080b']
+};
+const THEME={aurora:['#8b9bff','#0a0b14'],midnight:['#c9ceda','#0a0b10'],sunset:['#ff9a62','#240d16'],ocean:['#4fd8e6','#032230'],forest:['#6fe3a0','#04170e'],grid:['#a3e635','#101a02']};
+function setTheme(t){ const r=document.documentElement.style; r.setProperty('--accent',t[0]); r.setProperty('--on',t[1]); }
+function accentFrom(src){            // pick a vivid color from the photo
+  const c=document.createElement('canvas'); c.width=c.height=24; const g=c.getContext('2d'); g.drawImage(src,0,0,24,24);
+  const d=g.getImageData(0,0,24,24).data; let r=0,gr=0,b=0,w=0;
+  for(let i=0;i<d.length;i+=4){ const mx=Math.max(d[i],d[i+1],d[i+2]), mn=Math.min(d[i],d[i+1],d[i+2]), sat=(mx-mn)/(mx||1), wt=.05+sat*sat; r+=d[i]*wt; gr+=d[i+1]*wt; b+=d[i+2]*wt; w+=wt; }
+  r/=w*255; gr/=w*255; b/=w*255;
+  const mx=Math.max(r,gr,b), mn=Math.min(r,gr,b), dl=mx-mn; let h=0;
+  if(dl){ h = mx===r ? ((gr-b)/dl)%6 : mx===gr ? (b-r)/dl+2 : (r-gr)/dl+4; h=Math.round(((h*60)+360)%360); }
+  const l=(mx+mn)/2, sat=dl ? dl/(1-Math.abs(2*l-1)) : 0;
+  return `hsl(${h} ${Math.round(Math.max(sat,.55)*100)}% 66%)`;
+}
+const bgEl=$('bg'), bgRow=$('bgrow');
+function applyBg(id){
+  const photo = id==='photo' ? store.get('fm_bgimg') : null;
+  if(id==='photo' && photo){ bgEl.style.background=`url(${photo}) center/cover no-repeat`; bgEl.dataset.k='photo'; }
+  else { if(!BGS[id]) id='aurora'; bgEl.style.background=BGS[id][1]; bgEl.dataset.k=''; }
+  setTheme(id==='photo' ? [store.get('fm_bgacc')||'#8b9bff','#0a0b10'] : (THEME[id]||THEME.aurora));
+  bgRow.querySelectorAll('.sw').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.bg===id)));
+  store.set('fm_bg',id);
+}
+Object.entries(BGS).forEach(([id,[name,css]])=>{
+  const b=document.createElement('button'); b.className='sw'; b.dataset.bg=id; b.style.background=css; b.setAttribute('aria-label',name+' background'); b.title=name;
+  b.onclick=()=>applyBg(id); bgRow.appendChild(b);
+});
+const up=document.createElement('button'); up.className='sw up'; up.textContent='+'; up.setAttribute('aria-label','Upload your own background photo'); up.title='Your photo';
+up.onclick=()=>$('bgf').click(); bgRow.appendChild(up);
+$('bgf').onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return; $('bgErr').textContent='';
+  try{
+    const bmp=await createImageBitmap(f), k=Math.min(1,1280/Math.max(bmp.width,bmp.height));
+    const c=document.createElement('canvas'); c.width=Math.round(bmp.width*k); c.height=Math.round(bmp.height*k);
+    c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+    const data=c.toDataURL('image/jpeg',.72);
+    const acc=accentFrom(c);
+    let saved=true; try{ localStorage.setItem('fm_bgimg',data); localStorage.setItem('fm_bgacc',acc); }catch(_){ saved=false; }
+    if(saved) applyBg('photo');
+    else { bgEl.style.background=`url(${data}) center/cover no-repeat`; bgEl.dataset.k='photo'; setTheme([acc,'#0a0b10']); $('bgErr').textContent='Photo works for now but is too big to remember. Try a smaller one.'; }
+  }catch(_){ $('bgErr').textContent='That file could not be used. Pick a normal photo (JPG or PNG).'; }
+  e.target.value='';
+};
+applyBg(store.get('fm_bg')||'aurora');
+
+// ---- reactive button effects ----
+$('fx').checked = store.get('fm_fx')!=='0';
+$('fx').onchange = e => store.set('fm_fx', e.target.checked ? '1' : '0');
+const calm = matchMedia('(prefers-reduced-motion:reduce)');
+let ac=null;
+function tickSound(){
+  try{
+    ac = ac || new (window.AudioContext||window.webkitAudioContext)();
+    const t=ac.currentTime, o=ac.createOscillator(), g=ac.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(680,t); o.frequency.exponentialRampToValueAtTime(380,t+.06);
+    g.gain.setValueAtTime(.06,t); g.gain.exponentialRampToValueAtTime(.0001,t+.08);
+    o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t+.09);
+  }catch(_){}
+}
+addEventListener('pointerdown',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  if(!calm.matches){
+    const r=b.getBoundingClientRect(), d=Math.max(r.width,r.height)*2, p=document.createElement('span');
+    p.className='rip'; p.style.cssText=`width:${d}px;height:${d}px;left:${e.clientX-r.left-d/2}px;top:${e.clientY-r.top-d/2}px`;
+    b.appendChild(p); setTimeout(()=>p.remove(),650);
+    const sh=document.querySelector('.shell'); sh.classList.remove('pulse'); void sh.offsetWidth; sh.classList.add('pulse');
+  }
+  if($('fx').checked){ tickSound(); try{ navigator.vibrate && navigator.vibrate(12); }catch(_){} }
+});
+
+// ---- alarm ----
+$('lookReq').checked = store.get('fm_look')!=='0';
+$('lookReq').onchange = e => store.set('fm_look', e.target.checked ? '1' : '0');
+const alarm={on:false,since:0,t0:0,e:null,beep:null,vib:null,spk:null,rev:null,snooze:null};
+function alarmBeep(vol){
+  try{
+    ac = ac || new (window.AudioContext||window.webkitAudioContext)();
+    if(ac.state==='suspended') ac.resume();
+    const t=ac.currentTime;
+    [[880,0],[660,.18],[880,.36]].forEach(([f,d])=>{
+      const o=ac.createOscillator(), g=ac.createGain();
+      o.type='square'; o.frequency.value=f;
+      g.gain.setValueAtTime(vol,t+d); g.gain.exponentialRampToValueAtTime(.0001,t+d+.15);
+      o.connect(g); g.connect(ac.destination); o.start(t+d); o.stop(t+d+.16);
+    });
+  }catch(_){}
+}
+function ringAlarm(e,mode='look'){
+  if(alarm.on || T.on) return;
+  alarm.on=true; alarm.e=e; alarm.mode=mode; alarm.since=0; alarm.t0=Date.now();
+  report('alarm', mode==='phone' ? 'Phone alarm is ringing.' : `Study alarm is ringing: ${e.subj}.`);
+  const phone=mode==='phone', gate=phone || $('lookReq').checked;
+  $('alT').textContent = phone ? 'Phone detected' : 'Time to study';
+  $('alS').textContent = phone ? 'Put it down and show that you are working.' : e.subj;
+  $('alRingBox').hidden=phone; $('alUp').hidden=!phone; $('alSnooze').hidden=phone;
+  $('alRing').style.strokeDashoffset=327; $('alMsg').textContent='Look at the camera to stop the alarm';
+  $('alUpNote').textContent='Upload at least one photo to stop the alarm.';
+  $('alStop').hidden=gate; $('alarm').hidden=false;
+  const loop=()=>alarmBeep(Math.min(.35,.1+(Date.now()-alarm.t0)/1000*.008));   // gets louder the longer it rings
+  alarm.beep=setInterval(loop,1200); loop();
+  alarm.vib=setInterval(()=>{ try{ navigator.vibrate && navigator.vibrate([400,200,400]); }catch(_){} },2000);
+  const say=()=>speak(phone ? pick(PHONEAL) : `Time to study ${e.subj}. Look at the camera to stop the alarm.`);
+  alarm.spk=setInterval(say,12000); say();
+  if(gate) alarm.rev=setTimeout(()=>{ $('alStop').hidden=false; }, phone?60000:30000);   // safety valve
+  try{ if('Notification' in window && Notification.permission==='granted') new Notification('FOCUSMATE',{body: phone ? 'Phone detected' : 'Time to study '+e.subj}); }catch(_){}
+  if(!running) start();
+}
+function endAlarm(){
+  [alarm.beep,alarm.vib,alarm.spk].forEach(clearInterval); clearTimeout(alarm.rev);
+  report('alarm','Alarm dismissed.');
+  alarm.on=false; $('alarm').hidden=true; lastSeen=Date.now(); phoneCool=Date.now()+60000;
+  try{ speechSynthesis.cancel(); navigator.vibrate && navigator.vibrate(0); }catch(_){}
+}
+function alarmCheck(n,now){
+  if(!canDetect){ $('alStop').hidden=false; $('alMsg').textContent='Camera not detecting. Use Stop.'; return; }
+  if(n>0){
+    alarm.since = alarm.since || now;
+    const p=Math.min(1,(now-alarm.since)/2000);
+    $('alRing').style.strokeDashoffset=327*(1-p);
+    $('alMsg').textContent = p<1 ? 'Hold still\u2026' : 'Verified';
+    if(p>=1){ endAlarm(); speak(pick(UPL)); try{ navigator.vibrate && navigator.vibrate([80,60,80]); }catch(_){} }
+  } else {
+    alarm.since=0; $('alRing').style.strokeDashoffset=327; $('alMsg').textContent='Look at the camera to stop the alarm';
+  }
+}
+$('alStop').onclick = endAlarm;
+$('alSnooze').onclick = () => {
+  const e=alarm.e; report('alarm','Student snoozed the alarm for 5 minutes.'); endAlarm(); if(running) stop();
+  clearTimeout(alarm.snooze); alarm.snooze=setTimeout(()=>ringAlarm(e),5*60000);
+  $('stat').textContent='Snoozed. The alarm will ring again in 5 minutes.';
+};
+$('alTest').onclick = () => ringAlarm({subj:'Test session',len:0,id:'test'});
+$('phTest').onclick = () => ringAlarm({subj:'Phone'},'phone');
+
+// ---- snapshots, phone detection and photo proof ----
+$('phSens').value=store.get('fm_ph2')||'.35'; $('phSens').onchange=e=>store.set('fm_ph2',e.target.value);
+['snapOn','phoneOn','chat'].forEach(id=>{ const k='fm_'+id; $(id).checked=store.get(k)!=='0'; $(id).onchange=e=>store.set(k,e.target.checked?'1':'0'); });
+let shots=[]; try{ shots=JSON.parse(store.get('fm_shots')||'[]'); }catch(_){ shots=[]; }
+function saveShots(){ for(let i=0;i<4;i++){ try{ localStorage.setItem('fm_shots',JSON.stringify(shots)); return; }catch(_){ shots=shots.slice(0,Math.floor(shots.length/2)); } } }
+function renderGal(){
+  $('gal').innerHTML = shots.length ? shots.map(x=>`<figure>${x.k!=='auto'?`<span class="k ${x.k}">${({phone:'Phone',flag:'Flag'})[x.k]||'Proof'}</span>`:''}<img src="${x.d}" alt="Snapshot"><figcaption>${new Date(x.t).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}</figcaption></figure>`).join('') : '<p class="empty">No snapshots yet.</p>';
+}
+function addShot(d,k){ shots.unshift({t:Date.now(),k,d}); shots=shots.slice(0,24); saveShots(); renderGal(); }
+function takeShot(k){
+  if(!everLoaded || !img.videoWidth) return;
+  const c=document.createElement('canvas'); c.width=320; c.height=240; c.getContext('2d').drawImage(img,0,0,320,240);
+  addShot(c.toDataURL('image/jpeg',.6),k);
+}
+$('galClr').onclick=()=>{ shots=[]; saveShots(); renderGal(); };
+renderGal();
+
+let objDet=null, lastObj=0, phoneHits=0, phoneCool=0;
+async function loadObj(){
+  if(objDet) return;
+  try{
+    const base='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+    const m=await import(base+'/vision_bundle.mjs');
+    const fs=await m.FilesetResolver.forVisionTasks(base+'/wasm');
+    const mk=u=>m.ObjectDetector.createFromOptions(fs,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/object_detector/'+u},runningMode:'IMAGE',scoreThreshold:.2,maxResults:5,categoryAllowlist:['cell phone']});
+    try{ objDet=await mk('efficientdet_lite2/float16/1/efficientdet_lite2.tflite'); }       // more accurate
+    catch(_){ objDet=await mk('efficientdet_lite0/float16/1/efficientdet_lite0.tflite'); }  // smaller fallback
+    if(running && !alarm.on) $('stat').textContent='Watching your face, eyes and phone. Phone model ready.';
+  }catch(_){ $('stat').textContent='Phone detection could not load. Face detection still works.'; }
+}
+let lastPhone=0;
+const pw=document.createElement('canvas'); pw.width=640; pw.height=480;      // phones are small, so look at a bigger picture
+const phoneSeen = now => now-lastPhone<2500;
+let phoneDbg={t:0,list:[]};
+function watchPhone(now){
+  if(!objDet || !$('phoneOn').checked || now-lastObj<1000) return;
+  lastObj=now;
+  pw.getContext('2d').drawImage(img,0,0,640,480);
+  const need=+$('phSens').value;
+  let hit=false;
+  try{
+    const ds=objDet.detect(pw).detections;
+    phoneDbg={t:now,list:ds.map(d=>({b:d.boundingBox,s:d.categories[0].score}))};
+    hit=ds.some(d=>{
+      const b=d.boundingBox, r=Math.max(b.width,b.height)/Math.max(1,Math.min(b.width,b.height));
+      return d.categories[0].score>=need && r>=1.15 && b.width*b.height>640*480*0.004;   // not a tiny speck, not a perfect square
+    });
+  }catch(_){}
+  if(hit){ phoneHits++; if(phoneHits>=2) lastPhone=now; } else phoneHits=0;     // two sightings in a row to count
+  if(phoneHits>=3 && !alarm.on && !T.on && now>=phoneCool){ phoneHits=0; takeShot('phone'); onDistraction('phone'); ringAlarm({subj:'Phone'},'phone'); }
+}
+$('alUpBtn').onclick=()=>$('alFile').click();
+$('alFile').onchange=async e=>{
+  let ok=0;
+  for(const f of [...e.target.files]){
+    try{
+      const bmp=await createImageBitmap(f), k=Math.min(1,480/Math.max(bmp.width,bmp.height));
+      const c=document.createElement('canvas'); c.width=Math.round(bmp.width*k); c.height=Math.round(bmp.height*k);
+      c.getContext('2d').drawImage(bmp,0,0,c.width,c.height); addShot(c.toDataURL('image/jpeg',.7),'proof'); ok++;
+    }catch(_){}
+  }
+  e.target.value='';
+  if(ok){ endAlarm(); speak(pick(PROOF)); } else $('alUpNote').textContent='That file could not be read. Pick a photo (JPG or PNG).';
+};
+
+// ---- test mode (cheating checks) ----
+const T={on:false,t0:0,len:0,flags:[],last:{},away:0,side:0,cover:0,hid:0,tick:null};
+const tc=document.createElement('canvas'); tc.width=16; tc.height=12; const tx=tc.getContext('2d',{willReadFrequently:true});
+function brightness(){
+  tx.drawImage(img,0,0,16,12); const d=tx.getImageData(0,0,16,12).data; let t=0;
+  for(let i=0;i<d.length;i+=4) t+=d[i]*.3+d[i+1]*.59+d[i+2]*.11;
+  return t/(d.length/4);
+}
+function testLabel(){
+  const left=Math.max(0,T.len*60-Math.floor((Date.now()-T.t0)/1000)), n=T.flags.length;
+  return `Test \u00b7 ${fmt(left)} left \u00b7 ${n} flag${n===1?'':'s'}`;
+}
+function addFlag(type,label,force){
+  const now=Date.now();
+  if(!force && now-(T.last[type]||0)<15000) return;      // one flag per type every 15 s
+  T.last[type]=now;
+  let d='';
+  try{ if(everLoaded && img.videoWidth){ const c=document.createElement('canvas'); c.width=320; c.height=240; c.getContext('2d').drawImage(img,0,0,320,240); d=c.toDataURL('image/jpeg',.6); addShot(d,'flag'); } }catch(_){}
+  T.flags.push({t:now,type,label,d}); renderNext(); report('test','Test flag: '+label,d?[d]:[]);
+}
+function testCheck(n,now){
+  if(n===0){ T.away=T.away||now; if(now-T.away>4000) addFlag('away','Left the frame'); } else T.away=0;
+  if(look.faces>1) addFlag('people','More than one person in view');
+  if(n>0 && Math.abs(look.yaw)>0.18){ T.side=T.side||now; if(now-T.side>2500) addFlag('side','Looking away to the side'); } else T.side=0;
+  if(phoneSeen(now)) addFlag('phone','Phone in view');
+  if(brightness()<18){ T.cover=T.cover||now; if(now-T.cover>3000) addFlag('cover','Camera covered or very dark'); } else T.cover=0;
+}
+function testTick(){
+  const now=Date.now(), away=document.hidden||!document.hasFocus();
+  if(away && !T.hid) T.hid=now;
+  if(!away && T.hid){ const sec=Math.round((now-T.hid)/1000); T.hid=0; if(sec>=3) addFlag('tab',`Left this page for ${sec} s`,true); }
+  if(now-T.t0>=T.len*60000){ endTest(); return; }
+  renderNext();
+}
+function endTest(){
+  if(!T.on) return;
+  T.on=false; clearInterval(T.tick); $('tGo').textContent='Start test'; renderNext();
+  const dur=Math.round((Date.now()-T.t0)/1000), n=T.flags.length;
+  const rows=T.flags.map(f=>`<div class="fr"><b>${fmt(Math.round((f.t-T.t0)/1000))}</b><span>${f.label}</span>${f.d?`<img src="${f.d}" alt="">`:'<span></span>'}</div>`).join('');
+  $('tRep').innerHTML=`<h3>Test report</h3><p class="note">Length ${fmt(dur)}. ${n?`${n} moment${n>1?'s':''} flagged for review.`:'Nothing was flagged.'}</p>${rows}<p class="note">Flags are signs to check, not proof. People look away to think.</p><button class="link" id="tCopy">Copy report</button>`;
+  $('tRep').hidden=false; $('td').open=true; $('tRep').scrollIntoView({block:'nearest'});
+  $('tCopy').onclick=()=>{
+    const txt=`FOCUSMATE test report\nLength ${fmt(dur)}\n`+(n?T.flags.map(f=>`${fmt(Math.round((f.t-T.t0)/1000))}  ${f.label}`).join('\n'):'Nothing flagged');
+    try{ navigator.clipboard.writeText(txt).then(()=>{ $('tCopy').textContent='Copied'; }); }catch(_){ $('tCopy').textContent='Copy is not available here'; }
+  };
+}
+$('tGo').onclick=async()=>{
+  if(T.on){ endTest(); return; }
+  const len=Math.round(+$('tLen').value);
+  if(!(len>=1 && len<=300)){ $('tMsg').textContent='Enter a length from 1 to 300 minutes.'; return; }
+  $('tMsg').textContent='';
+  if(alarm.on) endAlarm();
+  if(!running) await start();
+  if(!running){ $('tMsg').textContent='The camera has to be on. Allow camera access and try again.'; return; }
+  Object.assign(T,{on:true,t0:Date.now(),len,flags:[],last:{},away:0,side:0,cover:0,hid:0});
+  $('tRep').hidden=true; $('tGo').textContent='End test'; renderNext();
+  clearInterval(T.tick); T.tick=setInterval(testTick,1000);
+};
+
+// ---- study schedule ----
+const DAYS=['sun','mon','tue','wed','thu','fri','sat'], DAYL=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const esc=t=>t.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let sched=[], curSubj='', fired={}, endAt=0;
+try{ sched=JSON.parse(store.get('fm_sched')||'[]'); }catch(e){ sched=[]; }
+const saveS=()=>store.set('fm_sched',JSON.stringify(sched));
+const fmtT=(h,m)=>`${(h%12)||12}:${String(m).padStart(2,'0')} ${h<12?'AM':'PM'}`;
+const rangeT=e=>{ if(!e.len) return fmtT(e.h,e.m); const t=(e.h*60+e.m+e.len)%1440; return `${fmtT(e.h,e.m)} \u2013 ${fmtT(Math.floor(t/60),t%60)}`; };
+function parseSched(txt){
+  let t=' '+txt.trim()+' ', d=null;
+  const dm=t.match(/\b(sun(?:day)?|mon(?:day)?|tue(?:s(?:day)?)?|wed(?:nesday)?|thu(?:r(?:s(?:day)?)?)?|fri(?:day)?|sat(?:urday)?)\b/i);
+  if(dm){ d=DAYS.indexOf(dm[1].slice(0,3).toLowerCase()); t=t.replace(dm[0],' '); }
+  else if(/\b(daily|every ?day)\b/i.test(t)){ d=-1; t=t.replace(/\b(daily|every ?day)\b/i,' '); }
+  let h,m,tm=t.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i);
+  if(tm){ h=+tm[1]; m=+(tm[2]||0); const p=tm[3].toLowerCase(); if(h<1||h>12) return null; if(p==='pm'&&h<12) h+=12; if(p==='am'&&h===12) h=0; }
+  else { tm=t.match(/\b(\d{1,2}):(\d{2})\b/); if(!tm) return null; h=+tm[1]; m=+tm[2]; }
+  t=t.replace(tm[0],' ');
+  if(d===null||h>23||m>59) return null;
+  const subj=t.replace(/\b(at|on|from)\b/gi,' ').replace(/\s+/g,' ').trim();
+  if(!subj) return null;
+  return {id:Date.now()+Math.random(), d, h, m, subj:subj[0].toUpperCase()+subj.slice(1)};
+}
+function nextAt(e,from){
+  for(let i=0;i<8;i++){ const x=new Date(from); x.setDate(from.getDate()+i); x.setHours(e.h,e.m,0,0); if(x>from && (e.d===-1||x.getDay()===e.d)) return x; }
+  return null;
+}
+function whenLabel(e,x){
+  const now=new Date(), tmr=new Date(now); tmr.setDate(now.getDate()+1);
+  const day = x.toDateString()===now.toDateString() ? 'Today' : x.toDateString()===tmr.toDateString() ? 'Tomorrow' : DAYL[x.getDay()];
+  return `${day} ${fmtT(e.h,e.m)}`;
+}
+function renderNext(){
+  const c=$('next'); c.classList.toggle('now',!!curSubj||T.on);
+  if(T.on){ c.textContent=testLabel(); return; }
+  if(curSubj){ c.textContent='Now: '+curSubj; return; }
+  const now=new Date(); let best=null;
+  sched.forEach(e=>{ const x=nextAt(e,now); if(x && (!best||x<best.x)) best={e,x}; });
+  c.textContent = best ? `Next: ${whenLabel(best.e,best.x)} \u00b7 ${best.e.subj}` : 'Nothing planned yet. Add a session below.';
+}
+function renderSched(){
+  const now=new Date();
+  const rows=sched.map(e=>({e,x:nextAt(e,now)})).sort((a,b)=>a.x-b.x);
+  $('slist').innerHTML = rows.length ? rows.map(({e})=>`<div class="sr"><span><b>${e.d===-1?'Daily':DAYL[e.d]}</b><small>${rangeT(e)}</small></span><span>${esc(e.subj)}</span><button class="x" data-id="${e.id}" aria-label="Remove ${esc(e.subj)}">\u2715</button></div>`).join('') : '<p class="empty">No sessions yet. Try: Sunday 6:00pm Arabic and math</p>';
+  renderNext();
+}
+function addSched(){
+  const e=parseSched($('sIn').value);
+  if(!e){ $('sErr').textContent='Use this format: Sunday 6:00pm Arabic and math'; return; }
+  $('sErr').textContent=''; sched.push(e); saveS(); $('sIn').value=''; renderSched();
+}
+$('addS').onclick=addSched;
+const picked=new Set(), dayBox=$('days');
+[6,0,1,2,3,4,5].forEach(i=>{
+  const b=document.createElement('button'); b.textContent=DAYL[i]; b.setAttribute('aria-pressed','false');
+  b.onclick=()=>{ picked.has(i)?picked.delete(i):picked.add(i); b.setAttribute('aria-pressed',String(picked.has(i))); };
+  dayBox.appendChild(b);
+});
+$('sLen').onchange=()=>{ $('lenC').hidden=$('sLen').value!=='custom'; if(!$('lenC').hidden) $('sLenC').focus(); };
+$('addF').onclick=()=>{
+  const subj=$('sSub').value.trim(), tv=$('sTime').value;
+  if(!picked.size){ $('sErr').textContent='Pick at least one day.'; return; }
+  if(!tv){ $('sErr').textContent='Pick a start time.'; return; }
+  if(!subj){ $('sErr').textContent='Add a subject, like Arabic and math.'; return; }
+  let len=+$('sLen').value;
+  if($('sLen').value==='custom'){ len=Math.round(+$('sLenC').value); if(!(len>=1&&len<=720)){ $('sErr').textContent='Enter a custom length from 1 to 720 minutes.'; return; } }
+  const [h,m]=tv.split(':').map(Number), name=subj[0].toUpperCase()+subj.slice(1);
+  (picked.size===7?[-1]:[...picked]).forEach(d=>sched.push({id:Date.now()+Math.random(),d,h,m,len,subj:name}));
+  $('sErr').textContent=''; $('sSub').value=''; saveS(); renderSched();
+};
+$('sIn').onkeydown=ev=>{ if(ev.key==='Enter') addSched(); };
+$('slist').onclick=ev=>{ const b=ev.target.closest('.x'); if(!b) return; sched=sched.filter(e=>String(e.id)!==b.dataset.id); saveS(); renderSched(); };
+function checkSched(){
+  const n=new Date(), key=`${n.getDate()}-${n.getHours()}:${n.getMinutes()}`;
+  sched.forEach(e=>{
+    if((e.d===-1||e.d===n.getDay()) && e.h===n.getHours() && e.m===n.getMinutes() && fired[e.id]!==key){
+      fired[e.id]=key; curSubj=e.subj; endAt=e.len?Date.now()+e.len*60000:0; renderNext();
+      ringAlarm(e);
+    }
+  });
+}
+if(sched.length) $('sd').open=false;
+renderSched(); function endCheck(){
+  if(!endAt || Date.now()<endAt) return;
+  endAt=0;
+  if(running){ stop(); speak(pick(DONE)); confetti(); } else { curSubj=''; renderNext(); }
+}
+setInterval(()=>{ checkSched(); endCheck(); renderNext(); },10000); checkSched();
+
+// ---- themed dropdowns (replace the plain system menus) ----
+function themeSelect(sel){
+  const name=(sel.closest('label')?.firstChild?.textContent||'').trim();
+  const wrap=document.createElement('div'); wrap.className='dd';
+  const btn=document.createElement('button'); btn.type='button'; btn.className='ddb'; btn.setAttribute('aria-haspopup','listbox'); btn.setAttribute('aria-expanded','false');
+  const list=document.createElement('ul'); list.className='ddl'; list.setAttribute('role','listbox'); list.hidden=true;
+  wrap.append(btn,list); sel.after(wrap); sel.hidden=true;
+  const label=()=>{ const t=sel.options[sel.selectedIndex]?.text||''; btn.textContent=t; btn.setAttribute('aria-label',`${name}: ${t}`); };
+  const close=()=>{ list.hidden=true; btn.setAttribute('aria-expanded','false'); };
+  const choose=i=>{ sel.selectedIndex=i; sel.dispatchEvent(new Event('change')); label(); };
+  btn.onclick=()=>{
+    if(!list.hidden){ close(); return; }
+    list.innerHTML='';
+    [...sel.options].forEach((o,i)=>{ const li=document.createElement('li'); li.setAttribute('role','option'); li.textContent=o.text; if(i===sel.selectedIndex) li.setAttribute('aria-selected','true'); li.onclick=ev=>{ ev.stopPropagation(); ev.preventDefault(); choose(i); close(); }; list.appendChild(li); });
+    list.hidden=false; btn.setAttribute('aria-expanded','true');
+    list.querySelector('[aria-selected]')?.scrollIntoView({block:'nearest'});
+  };
+  btn.onkeydown=ev=>{
+    if(ev.key==='Escape') close();
+    else if(ev.key==='ArrowDown'||ev.key==='ArrowUp'){ ev.preventDefault(); const n=Math.max(0,Math.min(sel.options.length-1,sel.selectedIndex+(ev.key==='ArrowDown'?1:-1))); choose(n); if(!list.hidden){ close(); btn.click(); } }
+  };
+  addEventListener('pointerdown',ev=>{ if(!wrap.contains(ev.target)) close(); });
+  sel._dd=label; label();
+}
+document.querySelectorAll('select').forEach(themeSelect);
+
+// ---- live clock and date ----
+function updateClock(){
+  const n=new Date();
+  $('clk').textContent=n.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+  $('clk').dateTime=n.toISOString();
+  $('dte').textContent=n.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'});
+}
+updateClock(); setInterval(updateClock,1000);
+
+// ================= PARENT CONTROL + ESP32-CAM (required) =================
+const SVC='4fafc201-1fb5-459e-8fcc-c5c9c331914b', CMDC='beb5483e-36e1-4688-b7f5-ea07361b26a8', IMGC='1c95d5e3-d8f7-413a-bf3d-7a2e5d7be87e';
+const BACKEND_URL=window.FM_BACKEND||'';
+var PC={cfg:null,dev:null,cmd:null,img:null,ok:false,locked:false,watch:false,sv:null,hidAt:0,gateWanted:true,snapBusy:false};
+try{ PC.cfg=JSON.parse(store.get('fm_pc')||'null'); if(PC.cfg) PC.cfg.url=BACKEND_URL; }catch(_){}
+var lastD=0, busyD=false;
+var KL={phone:'Phone detected',asleep:'Eyes closed / sleepy',away:'Student left the desk',tab:'Student left the study page'};
+const sleepMs=ms=>new Promise(r=>setTimeout(r,ms));
+
+// ---- backend calls (Google Apps Script) ----
+async function api(action,data){
+  if(!PC||!PC.cfg||!PC.cfg.url) return null;
+  try{
+    const r=await fetch(PC.cfg.url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action,mail:PC.cfg.mail,pin:PC.cfg.pin,...data})});
+    return await r.json();
+  }catch(_){ return null; }
+}
+function report(type,msg,imgs){
+  if(!PC||!PC.cfg) return;
+  api('event',{type,msg,imgs:(imgs||[]).filter(Boolean),student:PC.cfg.name});
+}
+function webShot(){
+  try{ if(everLoaded && img.videoWidth){ const c=document.createElement('canvas'); c.width=320; c.height=240; c.getContext('2d').drawImage(img,0,0,320,240); return c.toDataURL('image/jpeg',.6); } }catch(_){}
+  return null;
+}
+const bytesURL=b=>new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=()=>res(null); fr.readAsDataURL(new Blob([b],{type:'image/jpeg'})); });
+
+// ---- gate: parent settings and ESP32-CAM are obligatory ----
+function gateOK(){ return !!(PC.cfg && PC.cfg.mail && PC.cfg.pin && PC.cfg.url && PC.ok); }
+function gateRefresh(){
+  const ok=gateOK();
+  $('pcState').textContent = (PC.cfg?'\u2713 Parent settings saved. ':'\u2022 Parent settings needed. ')+(PC.ok?'\u2713 ESP32-CAM connected.':'\u2022 ESP32-CAM not connected.');
+  $('espBtn').disabled=!PC.cfg;
+  $('pcStat').textContent = PC.cfg ? `Parent control on \u00b7 ESP32-CAM ${PC.ok?'connected':'NOT connected'}${PC.locked?' \u00b7 LOCKED':''}` : 'Parent control not set up';
+  if(ok && !$('gate')._edit) $('gate').hidden=true; else if(!ok) $('gate').hidden=false;
+  $('gClose').hidden=!ok;
+}
+function openGate(edit){
+  const c=PC.cfg||{};
+  $('pcName').value=c.name||''; $('pcMail').value=c.mail||''; $('pcPin').value=c.pin||'';
+  $('pcOk').checked=!!PC.cfg; $('gate')._edit=!!edit; $('gate').hidden=false; gateRefresh();
+}
+$('gClose').onclick=()=>{ $('gate')._edit=false; gateRefresh(); };
+$('pcOpen').onclick=()=>{
+  if(PC.cfg){ const p=prompt('Parent PIN'); if(p!==PC.cfg.pin){ $('stat').textContent='Wrong PIN. Only a parent can change these settings.'; return; } }
+  openGate(true);
+};
+$('pcSave').onclick=async()=>{
+  const c={name:$('pcName').value.trim(),mail:$('pcMail').value.trim().toLowerCase(),pin:$('pcPin').value.trim(),url:BACKEND_URL};
+  const e=$('gErr'); e.textContent='';
+  if(!c.name) return e.textContent='Enter the student name.';
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.mail)) return e.textContent='Enter a valid parent email.';
+  if(c.pin.length<4) return e.textContent='The parent PIN needs at least 4 characters.';
+  if(!/^https:\/\/script\.google\.com\//.test(c.url)) return e.textContent='This page is not connected to the backend yet. Ask the person who set it up.';
+  if(!$('pcOk').checked) return e.textContent='Please confirm that you understand what your parent can see.';
+  PC.cfg=c; store.set('fm_pc',JSON.stringify(c));
+  const r=await api('register',{student:c.name});
+  if(!r||!r.ok){ e.textContent='Could not reach the backend. Try again in a moment.'; PC.cfg=null; store.set('fm_pc','null'); gateRefresh(); return; }
+  $('gate')._edit=false; gateRefresh();
+};
+
+// ---- ESP32-CAM over Bluetooth Low Energy ----
+async function espLink(){
+  const s=await PC.dev.gatt.connect(), sv=await s.getPrimaryService(SVC);
+  PC.cmd=await sv.getCharacteristic(CMDC); PC.img=await sv.getCharacteristic(IMGC); await PC.img.startNotifications();
+  PC.ok=true; report('esp','ESP32-CAM connected over Bluetooth'); gateRefresh();
+}
+async function espConnect(){
+  const e=$('gErr'); e.textContent='';
+  if(!navigator.bluetooth){ e.textContent='This browser has no Web Bluetooth. Use Chrome or Edge on Android or a computer, on an https page.'; return; }
+  try{
+    PC.dev=await navigator.bluetooth.requestDevice({filters:[{services:[SVC]}]});
+    PC.dev.addEventListener('gattserverdisconnected',onEspDown);
+    await espLink();
+  }catch(err){ e.textContent='Could not connect: '+(err.message||err); }
+}
+async function onEspDown(){
+  PC.ok=false; PC.cmd=null; PC.img=null;
+  report('esp','ESP32-CAM disconnected. Session paused until it is reconnected.');
+  if(running) stop();
+  gateRefresh();
+  for(let i=0;i<5 && !PC.ok;i++){ await sleepMs(2500); try{ await espLink(); }catch(_){} }
+}
+$('espBtn').onclick=espConnect;
+
+function espSnap(){
+  return new Promise(res=>{
+    if(!PC.ok||!PC.cmd||PC.snapBusy){ res(null); return; }
+    PC.snapBusy=true;
+    let buf=null,need=0,got=0,done=false;
+    const fin=v=>{ if(done) return; done=true; PC.snapBusy=false; try{ PC.img.removeEventListener('characteristicvaluechanged',h); }catch(_){} clearTimeout(to); res(v); };
+    const h=ev=>{
+      const dv=ev.target.value, d=new Uint8Array(dv.buffer,dv.byteOffset,dv.byteLength);
+      if(!buf){ if(d[0]!==0x53||d.length<5) return; need=(d[1]|(d[2]<<8)|(d[3]<<16)|(d[4]<<24))>>>0; if(!need||need>200000){ fin(null); return; } buf=new Uint8Array(need); got=0; return; }
+      const n=Math.min(d.length,need-got); buf.set(d.subarray(0,n),got); got+=n;
+      if(got>=need) fin(buf);
+    };
+    PC.img.addEventListener('characteristicvaluechanged',h);
+    const to=setTimeout(()=>fin(null),25000);
+    PC.cmd.writeValueWithoutResponse(new TextEncoder().encode('SNAP')).catch(()=>fin(null));
+  });
+}
+
+// ---- distraction pipeline: webcam flag -> ESP32 photo -> AI recheck -> parents ----
+async function onDistraction(kind){
+  const now=Date.now();
+  if(busyD || now-lastD<20000 || !PC.cfg) return;
+  busyD=true; lastD=now;
+  try{
+    const cam=webShot();
+    report('distraction',`Possible distraction: ${KL[kind]||kind}. Taking an ESP32-CAM photo to double-check.`,[cam]);
+    $('stat').textContent='Distraction flagged. Checking with the ESP32-CAM\u2026';
+    const raw=await espSnap();
+    const esp=raw?await bytesURL(raw):null;
+    if(esp){ $('espImg').src=esp; $('espFig').hidden=false; }
+    else report('warn','The ESP32-CAM did not return a photo for this check.',[]);
+    const v=await api('verify',{kind:KL[kind]||kind,student:PC.cfg.name,imgs:[esp,cam].filter(Boolean)});
+    if(!v) $('stat').textContent='Could not reach the backend to verify.';
+    else if(v.distracted===true) $('stat').textContent='Distraction confirmed. Your parents were told.';
+    else if(v.distracted===false) $('stat').textContent='Checked: nothing found. Carry on.';
+    else $('stat').textContent='Could not verify. Your parents were told.';
+  }finally{ busyD=false; }
+}
+
+// ---- lock mode (parent controlled) ----
+const svid=document.createElement('video'); svid.muted=true; svid.playsInline=true;
+function showLock(){ $('lkErr').textContent=''; $('lockov').hidden=false; }
+function applyLock(){
+  if(PC.locked){ showLock(); }
+  else{
+    $('lockov').hidden=true;
+    try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(_){}
+    if(PC.sv){ PC.sv.getTracks().forEach(t=>t.stop()); PC.sv=null; }
+  }
+  gateRefresh();
+}
+$('lkGo').onclick=async()=>{
+  try{ await document.documentElement.requestFullscreen(); }catch(_){}
+  if(!PC.sv||!PC.sv.active){
+    try{
+      PC.sv=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:2},audio:false});
+      svid.srcObject=PC.sv; await svid.play();
+      PC.sv.getVideoTracks()[0].onended=()=>{ if(PC.locked){ report('lock','Screen sharing was stopped while locked.'); showLock(); } };
+      report('lock','Screen sharing started. Parent can view the screen.');
+    }catch(_){ $('lkErr').textContent='Screen sharing is required while locked. Choose "Entire screen".'; return; }
+  }
+  $('lockov').hidden=true;
+  if(!running) start();
+};
+document.addEventListener('fullscreenchange',()=>{
+  if(PC.locked && !document.fullscreenElement){ report('lock','Student left fullscreen while locked.'); showLock(); }
+});
+document.addEventListener('visibilitychange',()=>{
+  if(!PC.cfg) return;
+  if(document.hidden && (PC.locked||running)){ PC.hidAt=Date.now(); }
+  else if(PC.hidAt){
+    const s=Math.round((Date.now()-PC.hidAt)/1000); PC.hidAt=0;
+    if(s>=3){ report('tab',`Student left the study page for ${s} s.`); if(running||PC.locked) onDistraction('tab'); }
+  }
+});
+addEventListener('beforeunload',ev=>{ if(PC.locked){ ev.preventDefault(); ev.returnValue=''; } });
+
+// ---- heartbeat and live screen frames ----
+async function pollState(){
+  if(!PC.cfg) return;
+  const s=await api('state',{status:{running,focused,dist,label:$('lbl').textContent,esp:PC.ok,state}});
+  if(!s||!s.ok) return;
+  PC.watch=!!s.watch;
+  if(!!s.locked!==PC.locked){ PC.locked=!!s.locked; applyLock(); }
+}
+setInterval(pollState,3000);
+setInterval(()=>{
+  if(!PC.watch||!PC.sv||!PC.sv.active||!svid.videoWidth) return;
+  const k=480/svid.videoWidth, c=document.createElement('canvas'); c.width=480; c.height=Math.round(svid.videoHeight*k);
+  c.getContext('2d').drawImage(svid,0,0,c.width,c.height);
+  api('frame',{d:c.toDataURL('image/jpeg',.45)});
+},2500);
+gateRefresh(); openGate(false);
+// =========================================================================
+
+// Starts by itself if the camera was left on last time.
+if(store.get('fm_auto')==='1') start();
+</script>
+<script>try{if(localStorage.getItem('fm_auto')==='1')document.getElementById('set').open=false}catch(e){}</script>
+</body>
+</html>

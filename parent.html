@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#07080b">
+<title>FOCUSMATE Parent</title>
+<style>
+:root{--bg:#07080b;--ink:#eceef4;--mute:#8b91a3;--accent:#8b9bff;--on:#0a0b14;--ok:#2de2a6;--warn:#ffc14d;--bad:#ff5d6c;--line:rgba(139,155,255,.3);--fill:rgba(139,155,255,.1);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;padding:16px;display:flex;justify-content:center}
+main{width:100%;max-width:720px}
+h1{font-size:1rem;letter-spacing:.3em;margin:4px 0 16px}
+.card{border-radius:24px;padding:16px;background:var(--fill);box-shadow:inset 0 0 0 1px var(--line);margin-bottom:14px}
+label{display:grid;gap:6px;font-size:.84rem;color:var(--mute);margin-bottom:10px}
+input{padding:12px 14px;border-radius:12px;border:0;background:rgba(0,0,0,.35);color:var(--ink);font:inherit;box-shadow:inset 0 0 0 1px var(--line)}
+button{border:0;border-radius:999px;padding:14px 20px;font:inherit;font-weight:700;cursor:pointer;background:var(--accent);color:var(--on)}
+button.lock{background:var(--bad);color:#fff}button.un{background:var(--ok)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}
+.grid b{display:block;font-size:1.15rem}.grid span{font-size:.7rem;color:var(--mute)}
+.live{width:100%;aspect-ratio:16/9;background:#000;border-radius:16px;object-fit:contain;display:block}
+.ev{display:grid;gap:6px;padding:10px 0;border-bottom:1px solid var(--line);font-size:.9rem}
+.ev time{color:var(--mute);font-size:.75rem}
+.tag{display:inline-block;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--accent);color:var(--on);margin-right:6px;text-transform:uppercase}
+.tag.confirmed,.tag.distraction,.tag.warn{background:var(--bad);color:#fff}.tag.cleared{background:var(--ok)}.tag.unverified,.tag.esp{background:var(--warn)}
+.th{display:flex;gap:6px;flex-wrap:wrap}.th img{height:90px;border-radius:8px}
+.err{color:var(--bad);font-size:.85rem}.mute{color:var(--mute);font-size:.8rem}
+[hidden]{display:none!important}
+</style>
+<script src="config.js"></script>
+</head>
+<body>
+<main>
+<h1>FOCUSMATE PARENT</h1>
+
+<section class="card" id="login">
+  <label>Parent email<input id="m" inputmode="email"></label>
+  <label>Parent PIN<input id="p" type="password"></label>
+  <button id="in">Sign in</button>
+  <p class="err" id="e"></p>
+</section>
+
+<section id="dash" hidden>
+  <div class="card">
+    <div class="grid">
+      <div><b id="sOn">-</b><span>Student</span></div>
+      <div><b id="sRun">-</b><span>Session</span></div>
+      <div><b id="sDis">-</b><span>Distractions</span></div>
+      <div><b id="sEsp">-</b><span>ESP32-CAM</span></div>
+    </div>
+    <p class="mute" id="sLbl"></p>
+    <button id="lk" style="width:100%">Lock student screen</button>
+    <p class="mute">Locked: the student's screen only opens FOCUSMATE in fullscreen and they must share their screen. Leaving it is reported to you.</p>
+  </div>
+  <div class="card">
+    <b>Live screen</b>
+    <img class="live" id="scr" alt="Student screen" hidden>
+    <p class="mute" id="scrNote">Waiting for the student's screen. It appears while the screen is locked and shared.</p>
+  </div>
+  <div class="card">
+    <b>Everything that happened</b>
+    <div id="feed"></div>
+  </div>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const L=(k,v)=>{try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k,v);}catch(_){return null}};
+const BACKEND_URL=window.FM_BACKEND||'';
+$('m').value=L('pp_m')||''; $('p').value=L('pp_p')||'';
+let locked=false, timer=null; const imgs={};
+async function api(action,d){
+  const r=await fetch(BACKEND_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action,mail:$('m').value.trim().toLowerCase(),pin:$('p').value.trim(),...d})});
+  return r.json();
+}
+async function poll(){
+  let r; try{ r=await api('p_poll'); }catch(_){ return; }
+  if(!r||!r.ok){ $('e').textContent='Sign-in failed. Check the email and PIN.'; $('login').hidden=false; $('dash').hidden=true; clearInterval(timer); return; }
+  $('login').hidden=true; $('dash').hidden=false;
+  const st=r.status, s=st&&st.s, fresh=st&&Date.now()-st.t<20000;
+  $('sOn').textContent=fresh?'Online':'Offline'; $('sRun').textContent=fresh&&s.running?'Running':'Idle';
+  $('sDis').textContent=s?s.dist:'-'; $('sEsp').textContent=fresh?(s.esp?'Connected':'Lost'):'-';
+  $('sLbl').textContent=fresh&&s?`${s.label||''} · ${Math.round((s.focused||0)/60)} min focused`:'';
+  locked=r.locked; $('lk').textContent=locked?'Unlock student screen':'Lock student screen'; $('lk').className=locked?'un':'lock';
+  if(r.frame){ $('scr').src='data:image/jpeg;base64,'+r.frame; $('scr').hidden=false; $('scrNote').hidden=true; }
+  else { $('scr').hidden=true; $('scrNote').hidden=false; }
+  $('feed').innerHTML=r.events.length?r.events.map(e=>`<div class="ev"><div><span class="tag ${e.type}">${e.type}</span>${esc(e.msg)}</div><time>${new Date(e.t).toLocaleString()}</time><div class="th">${e.imgs.map(k=>`<img data-k="${k}" ${imgs[k]?`src="${imgs[k]}"`:''} alt="">`).join('')}</div></div>`).join(''):'<p class="mute">Nothing yet.</p>';
+  document.querySelectorAll('.th img:not([src])').forEach(async i=>{ const k=i.dataset.k; try{ const x=await api('p_img',{key:k}); if(x.d){ imgs[k]='data:image/jpeg;base64,'+x.d; i.src=imgs[k]; } }catch(_){} });
+}
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+$('in').onclick=()=>{ L('pp_m',$('m').value.trim()); L('pp_p',$('p').value.trim()); $('e').textContent=''; poll(); clearInterval(timer); timer=setInterval(poll,2500); };
+$('lk').onclick=async()=>{ await api('p_lock',{locked:!locked}); poll(); };
+if($('m').value&&$('p').value) $('in').click();
+</script>
+</body>
+</html>
